@@ -4,7 +4,7 @@
  *===========================================
  *
  * Copyright 2015 Marin Pollmann <pollmann.m@gmail.com>
- * 
+ *
  *
  ***********************************************************************************************************************
  *
@@ -20,6 +20,15 @@
  ***********************************************************************************************************************/
 package de.mapoll.javaAVMTR064;
 
+import de.mapoll.javaAVMTR064.beans.ActionType;
+import de.mapoll.javaAVMTR064.beans.ArgumentType;
+import de.mapoll.javaAVMTR064.beans.ServiceType;
+import de.mapoll.javaAVMTR064.beans.StateVariableType;
+import org.apache.http.HttpEntity;
+import org.apache.http.entity.StringEntity;
+
+import javax.xml.namespace.QName;
+import javax.xml.soap.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,28 +36,7 @@ import java.lang.reflect.Type;
 import java.sql.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import javax.xml.soap.MessageFactory;
-import javax.xml.soap.SOAPBody;
-import javax.xml.soap.SOAPBodyElement;
-import javax.xml.soap.SOAPEnvelope;
-import javax.xml.soap.SOAPException;
-import javax.xml.soap.SOAPMessage;
-import javax.xml.soap.SOAPPart;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.entity.StringEntity;
-
-import de.mapoll.javaAVMTR064.beans.ActionType;
-import de.mapoll.javaAVMTR064.beans.ArgumentType;
-import de.mapoll.javaAVMTR064.beans.ServiceType;
-import de.mapoll.javaAVMTR064.beans.StateVariableType;
+import java.util.*;
 
 public class Action {
 
@@ -60,8 +48,9 @@ public class Action {
     private FritzConnection connection;
     private ServiceType serviceXML;
 
+
     public Action(ActionType action, List<StateVariableType> stateVariableList, FritzConnection connection,
-            ServiceType serviceXML) {
+                  ServiceType serviceXML) {
         this.actionXML = action;
         stateToType = new HashMap<String, Type>();
         argumentOut = new HashMap<String, Boolean>();
@@ -136,6 +125,18 @@ public class Action {
     }
 
     public Response execute(Map<String, Object> arguments) throws UnsupportedOperationException, IOException {
+        if (this.connection.getAuth() == null) {
+            Response response = this.pExecute(arguments);
+            if (response.getHeaderData().containsKey("Nonce")) {
+                this.connection.setNonce(response.getHeaderData().get("Nonce"));
+                this.connection.setRealm(response.getHeaderData().get("Realm"));
+                this.connection.setAuth(null); // ToDo...
+            }
+        }
+        return this.pExecute(arguments);
+    }
+
+    private Response pExecute(Map<String, Object> arguments) throws UnsupportedOperationException, IOException {
         Set<String> inArguments = new HashSet<String>();
         for (String a : argumentOut.keySet()) {
             if (!argumentOut.get(a)) {
@@ -167,13 +168,31 @@ public class Action {
         if (inArguments.size() > 0) {
             throw new UnsupportedOperationException("Missing In-Arguments: " + inArguments);
         }
+
         HttpEntity httpEntity = null;
         String message = null;
         try {
             MessageFactory factory = MessageFactory.newInstance();
             SOAPMessage soapMsg = factory.createMessage();
+
+            SOAPHeader header = soapMsg.getSOAPHeader();
             SOAPPart part = soapMsg.getSOAPPart();
             SOAPEnvelope envelope = part.getEnvelope();
+
+            if (this.connection.getAuth() == null) {
+                SOAPHeaderElement initChallenge = header.addHeaderElement(new QName("http://soap-authentication.org/digest/2001/10/", "InitChallenge", "h"));
+                initChallenge.setMustUnderstand(true);
+                initChallenge.addChildElement("UserID").setTextContent(this.connection.getUser());
+
+            } else {
+                SOAPHeaderElement clientAuth = header.addHeaderElement(new QName("http://soap-authentication.org/digest/2001/10/", "ClientAuth", "h"));
+                clientAuth.setMustUnderstand(true);
+                clientAuth.addChildElement("UserID").setTextContent(this.connection.getUser());
+                clientAuth.addChildElement("Nonce").setTextContent(this.connection.getNonce());
+                clientAuth.addChildElement("Auth").setTextContent(this.connection.getAuth());
+                clientAuth.addChildElement("Realm").setTextContent(this.connection.getRealm());
+            }
+
             SOAPBody body = envelope.getBody();
             envelope.setEncodingStyle("http://schemas.xmlsoap.org/soap/encoding/");
             SOAPBodyElement element = body.addBodyElement(envelope.createName(this.name, "u",
@@ -194,7 +213,42 @@ public class Action {
 
         return getMessage(connection.getSOAPXMLIS(serviceXML.getControlURL(),
                 serviceXML.getServiceType() + "#" + this.getName(), httpEntity));
+
     }
+
+//    private Response executeInitialRequest() throws IOException {
+//        HttpEntity httpEntity = null;
+//        String message = null;
+//
+//        try {
+//            MessageFactory factory = MessageFactory.newInstance();
+//            SOAPMessage soapMsg = factory.createMessage();
+//
+//            SOAPHeader header = soapMsg.getSOAPHeader();
+//            SOAPPart part = soapMsg.getSOAPPart();
+//            SOAPEnvelope envelope = part.getEnvelope();
+//
+//            SOAPHeaderElement initChallenge = header.addHeaderElement(new QName("http://soap-authentication.org/digest/2001/10/", "InitChallenge", "h"));
+//            initChallenge.setMustUnderstand(true);
+//            SOAPElement userID = initChallenge.addChildElement("UserID");
+//            userID.setTextContent(this.connection.getUser());
+//
+//            SOAPBody body = envelope.getBody();
+//            envelope.setEncodingStyle("http://schemas.xmlsoap.org/soap/encoding/");
+//            SOAPBodyElement element = body.addBodyElement(envelope.createName(this.name, "u",
+//                    serviceXML.getServiceType()));
+//            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//            soapMsg.writeTo(stream);
+//            message = new String(stream.toByteArray(), "utf-8");
+//        } catch (SOAPException e) {
+//            e.printStackTrace();
+//        }
+//
+//        httpEntity = new StringEntity(message);
+//
+//        return getMessage(connection.getSOAPXMLIS("/upnp/control/deviceinfo",
+//                "urn:dslforum-org:service:DeviceInfo:1#GetInfo", httpEntity));
+//    }
 
     private String valueToSOAPString(String name, Object value) {
         Class<?> classOfValue = null;
