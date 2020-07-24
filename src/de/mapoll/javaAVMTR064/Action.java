@@ -125,12 +125,11 @@ public class Action {
     }
 
     public Response execute(Map<String, Object> arguments) throws UnsupportedOperationException, IOException {
-        if (this.connection.getAuth() == null) {
+        if (this.connection.getNonce() == null) {
             Response response = this.pExecute(arguments);
             if (response.getHeaderData().containsKey("Nonce")) {
                 this.connection.setNonce(response.getHeaderData().get("Nonce"));
                 this.connection.setRealm(response.getHeaderData().get("Realm"));
-                this.connection.setAuth(null); // ToDo...
             }
         }
         return this.pExecute(arguments);
@@ -179,7 +178,7 @@ public class Action {
             SOAPPart part = soapMsg.getSOAPPart();
             SOAPEnvelope envelope = part.getEnvelope();
 
-            if (this.connection.getAuth() == null) {
+            if (this.connection.getNonce() == null) {
                 SOAPHeaderElement initChallenge = header.addHeaderElement(new QName("http://soap-authentication.org/digest/2001/10/", "InitChallenge", "h"));
                 initChallenge.setMustUnderstand(true);
                 initChallenge.addChildElement("UserID").setTextContent(this.connection.getUser());

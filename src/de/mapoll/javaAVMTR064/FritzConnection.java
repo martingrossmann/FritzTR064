@@ -41,12 +41,15 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
+import javax.xml.bind.DatatypeConverter;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -214,12 +217,9 @@ public class FritzConnection {
     }
 
     public String getAuth() {
-        return auth;
+        return this.calculateAuthString();
     }
 
-    public void setAuth(String auth) {
-        this.auth = auth;
-    }
 
     public String getRealm() {
         return realm;
@@ -227,6 +227,29 @@ public class FritzConnection {
 
     public void setRealm(String realm) {
         this.realm = realm;
+    }
+
+    private String calculateAuthString() {
+
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("MD5");
+            String concat = this.user + ":" + this.realm + ":" + this.pwd;
+            md.update(concat.getBytes());
+            byte[] digest = md.digest();
+
+            return getMD5(DatatypeConverter.printHexBinary(digest).toLowerCase() + ":" + this.nonce);
+        } catch (NoSuchAlgorithmException e) {
+            return "";
+        }
+    }
+
+    private String getMD5(String str) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+
+        md.update(str.getBytes());
+        byte[] digest = md.digest();
+        return DatatypeConverter.printHexBinary(digest).toLowerCase();
     }
 
     public void printInfo() {
