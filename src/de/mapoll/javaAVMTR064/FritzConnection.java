@@ -48,6 +48,7 @@ import javax.xml.bind.Unmarshaller;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -112,7 +113,7 @@ public class FritzConnection {
         if (user != null && pwd != null) {
             readTR64();
         } else {
-            throw new RuntimeException("Only user and password are supported");
+            throw new RuntimeException("Connection with user and password are supported only");
 //            readIGDDESC();
         }
 
@@ -204,10 +205,6 @@ public class FritzConnection {
         return this.user;
     }
 
-    public String getPwd() {
-        return this.pwd;
-    }
-
     public String getNonce() {
         return nonce;
     }
@@ -220,7 +217,6 @@ public class FritzConnection {
         return this.calculateAuthString();
     }
 
-
     public String getRealm() {
         return realm;
     }
@@ -230,26 +226,34 @@ public class FritzConnection {
     }
 
     private String calculateAuthString() {
+        StringBuffer response = new StringBuffer();
+        response.append(
+                convertToHex(
+                        getMD5(convertToHex(
+                                getMD5(this.user
+                                        + ":"
+                                        + this.realm
+                                        + ":"
+                                        + this.pwd, "ISO8859_1")
+                        ) + ":" + this.nonce, "ISO8859_1")
+                )
+        );
+        return response.toString();
+    }
 
-        MessageDigest md;
+    private byte[] getMD5(String secret, String enc) {
+        MessageDigest md = null;
         try {
             md = MessageDigest.getInstance("MD5");
-            String concat = this.user + ":" + this.realm + ":" + this.pwd;
-            md.update(concat.getBytes());
-            byte[] digest = md.digest();
-
-            return getMD5(DatatypeConverter.printHexBinary(digest).toLowerCase() + ":" + this.nonce);
-        } catch (NoSuchAlgorithmException e) {
-            return "";
+            md.update(secret.getBytes(enc));
+            return md.digest();
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException x) {
+            return null;
         }
     }
 
-    private String getMD5(String str) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-
-        md.update(str.getBytes());
-        byte[] digest = md.digest();
-        return DatatypeConverter.printHexBinary(digest).toLowerCase();
+    private String convertToHex(byte[] data) {
+        return DatatypeConverter.printHexBinary(data).toLowerCase();
     }
 
     public void printInfo() {
