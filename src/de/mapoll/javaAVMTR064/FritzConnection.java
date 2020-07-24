@@ -86,17 +86,6 @@ public class FritzConnection {
         this(address, DEFAULT_PORT);
     }
 
-    public static void main(String[] args) throws IOException, JAXBException {
-        FritzConnection fc = new FritzConnection("192.168.178.1", "fritz-user", "");
-
-        fc.init();
-//        Map<String, Service> services = fc.getServices();
-        Action getTotalBytesReceived = fc.getService("WANCommonInterfaceConfig:1").getAction("GetTotalBytesReceived");
-        Response execute = getTotalBytesReceived.execute();
-
-
-    }
-
     public FritzConnection(String address, int port, String user, String pwd) {
         this(address, port);
         this.user = user;
