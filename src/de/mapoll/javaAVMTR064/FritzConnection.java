@@ -83,7 +83,7 @@ public class FritzConnection {
     }
 
     public static void main(String[] args) throws IOException, JAXBException {
-        FritzConnection fc = new FritzConnection("192.168.178.1", "fritz-user", "LJy9T9HrhELnjzeA");
+        FritzConnection fc = new FritzConnection("192.168.178.1", "fritz-user", "");
 
         fc.init();
 //        Map<String, Service> services = fc.getServices();
