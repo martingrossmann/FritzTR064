@@ -1,3 +1,4 @@
 /github_FritzTR064.iml
 /.idea
 /target/
+/src/main/resources/env.properties
