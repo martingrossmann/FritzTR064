@@ -31,7 +31,7 @@ import de.mapoll.javaAVMTR064.FritzConnection;
 public class DisplayInfo {
     static String ip = "192.168.178.1";
     static String user = "fritz-user";
-    static String password = "LJy9T9HrhELnjzeA";
+    static String password = "";
 
     public static void main(String[] args) throws IOException, JAXBException {
         FritzConnection fcWithoutUser = new FritzConnection(ip, user, password);
