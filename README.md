@@ -34,7 +34,7 @@ For more examples see: [The Example Folder](https://github.com/mirthas/FritzTR06
 ## Great thanks to
 Martin Pollmann for his basic work!
 
-## Resorces
+## Resources
 * [AVM API Description](http://avm.de/service/schnittstellen/) (German)
 * [AVM TR64 first steps](https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AVM_TR-064_first_steps.pdf)
 * [Examples](https://github.com/mirthas/FritzTR064/tree/master/examples)
